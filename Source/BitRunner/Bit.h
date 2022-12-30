@@ -2,9 +2,11 @@
 
 #pragma once
 
+#include "Components/TimelineComponent.h"
 #include "CoreMinimal.h"
 #include "GameFramework/Pawn.h"
 #include "Bit.generated.h"
+
 
 UCLASS()
 class BITRUNNER_API ABit : public APawn
@@ -19,17 +21,19 @@ protected:
 	// Called when the game starts or when spawned
 	virtual void BeginPlay() override;
 
+	// Static mesh component
+	UPROPERTY(EditAnywhere)
+		UStaticMeshComponent* StaticMesh;
+	 
+
 public:	
 	// Called every frame
 	virtual void Tick(float DeltaTime) override;
 
 	// Called to bind functionality to input
 	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
-
-	UPROPERTY(EditAnywhere)
-	UStaticMeshComponent* StaticMesh;
 	
-	// Action callbacks
+	// Input callbacks
 	void ToggleJumpOn();
 
 	void ToggleJumpOff();
@@ -41,35 +45,46 @@ public:
 	void ToggleAbility2On();
 
 	void ToggleAbility2Off();
-	
-	// Axis callbacks
+
 	void MoveY(float AxisValue);
-
-	// Input variables
-	UPROPERTY(VisibleAnywhere)
-	FVector2D MovementInput;
-	UPROPERTY(VisibleAnywhere)
-	bool bJump;
-	UPROPERTY(VisibleAnywhere)
-	bool bAbility1Triggered;
-	UPROPERTY(VisibleAnywhere)
-	bool bAbility2Triggered;
-
-	// Movement variables
-	UPROPERTY(EditAnywhere);
-	float MovementSpeed;
-	UPROPERTY(EditAnywhere);
-	float Acceleration; 
-	UPROPERTY(EditAnywhere);
-	float Decceleration;
-	UPROPERTY(EditAnywhere);
-	float JumpMultiplier;
-	UPROPERTY(EditAnywhere);
-	bool bCanJump;
 	
+	// Jump timeline functions
+	UFUNCTION() 
+		void TimelineFinished();
+	UFUNCTION() void 
+		TimelineProgress(float Value);
+	
+	
+	UPROPERTY(VisibleAnywhere, Category = 'Input') 
+		FVector2D MovementInput;
+	UPROPERTY(VisibleAnywhere, Category = 'Input') 
+		bool bJump;
+	UPROPERTY(VisibleAnywhere, Category = 'Input') 
+		bool bAbility1Triggered;
+	UPROPERTY(VisibleAnywhere, Category = 'Input') 
+		bool bAbility2Triggered;
+	UPROPERTY(EditAnywhere, Category = 'Locomotion') 
+		float MovementSpeed;
+	UPROPERTY(EditAnywhere, Category = 'Jump') 
+		float JumpHeight;
+	UPROPERTY(EditAnywhere, Category = 'Jump') 
+		bool bCanJump;
+	
+	FTimeline CurveFTimeline;
+	UPROPERTY()
+		UCurveFloat* CurveFloat;
+	UPROPERTY() 
+		FVector JumpStartLoc;
+	UPROPERTY() 
+		FVector JumpEndLoc;
 
-	// Temporary camera variable
-	UPROPERTY(EditAnywhere);
-	AActor* Camera;
+	// Temperary camera variable
+	UPROPERTY(EditAnywhere, Category = 'Camera'); AActor* Camera;
+
+
+
+	/* UPROPERTY(EditAnywhere) float JumpMultiplier;
+	UPROPERTY(EditAnywhere) float Acceleration;
+	UPROPERTY(EditAnywhere) float Decceleration;*/
 	
 };

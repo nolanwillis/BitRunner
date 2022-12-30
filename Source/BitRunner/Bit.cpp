@@ -12,9 +12,11 @@ ABit::ABit()
 	// Create components
 	RootComponent = CreateDefaultSubobject<USceneComponent>(TEXT("RootSceneComponent"));
 	StaticMesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("StaticMeshComponent"));
+	Timeline = CreateDefaultSubobject<UTimelineComponent>(TEXT("TimelineComponent"));
+
 	// Attach components
 	StaticMesh->SetupAttachment(RootComponent);
-
+	
 	// Set default player controller to posses pawn
 	AutoPossessPlayer = EAutoReceiveInput::Player0;
 }
@@ -39,18 +41,30 @@ void ABit::Tick(float DeltaTime)
 
 	// Handles y direction movement
 	{
-		float TargetVelocity = MovementInput.Y * MovementSpeed;
+		// Physics based
+		/*float TargetVelocity = MovementInput.Y * MovementSpeed;
 		float VelocityDelta = TargetVelocity - (this->GetVelocity().Y);
 		float AccelerationState = abs(TargetVelocity) > 0.01f ? Acceleration : Decceleration;
 		float ForceMultiplier = VelocityDelta * AccelerationState;
-		StaticMesh->AddForce(ForceMultiplier * GetActorRightVector());
+		StaticMesh->AddForce(ForceMultiplier * GetActorRightVector());*/
+		// Position based
+		if (!MovementInput.IsZero())
+		{
+			MovementInput = MovementInput.GetSafeNormal() * MovementSpeed;
+			FVector NewLocation = GetActorLocation();
+			NewLocation += GetActorRightVector() * MovementInput.Y * DeltaTime;
+			SetActorLocation(NewLocation);
+		}
 	}
 	// Handles jump
 	{
 		if (bJump && bCanJump)
 		{
 			bCanJump = false;
-			StaticMesh->AddImpulse(GetActorUpVector() * JumpMultiplier);
+			// Physics based
+			//StaticMesh->AddImpulse(GetActorUpVector() * JumpMultiplier);
+			// Position based
+
 		}
 	}
 
@@ -101,6 +115,11 @@ void ABit::ToggleAbility2On()
 void ABit::ToggleAbility2Off()
 {
 	bAbility2Triggered = false;
+}
+
+void ABit::TimelineFinishedFunction()
+{
+	bCanJump = true;
 }
 
 void ABit::MoveY(float AxisValue)
