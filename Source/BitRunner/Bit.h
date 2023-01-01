@@ -2,11 +2,13 @@
 
 #pragma once
 
-#include "Components/TimelineComponent.h"
+
 #include "CoreMinimal.h"
 #include "GameFramework/Pawn.h"
+#include "Components/TimelineComponent.h"
 #include "Bit.generated.h"
 
+class UCurveFloat;
 
 UCLASS()
 class BITRUNNER_API ABit : public APawn
@@ -33,58 +35,52 @@ public:
 	// Called to bind functionality to input
 	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
 	
-	// Input callbacks
-	void ToggleJumpOn();
-
-	void ToggleJumpOff();
-
-	void ToggleAbility1On();
-
-	void ToggleAbility1Off();
-
-	void ToggleAbility2On();
-
-	void ToggleAbility2Off();
-
-	void MoveY(float AxisValue);
-	
-	// Jump timeline functions
-	UFUNCTION() 
-		void TimelineFinished();
-	UFUNCTION() void 
-		TimelineProgress(float Value);
-	
-	
-	UPROPERTY(VisibleAnywhere, Category = 'Input') 
+	// Movement
+	UPROPERTY(VisibleAnywhere, Category = "Input") 
 		FVector2D MovementInput;
-	UPROPERTY(VisibleAnywhere, Category = 'Input') 
-		bool bJump;
-	UPROPERTY(VisibleAnywhere, Category = 'Input') 
-		bool bAbility1Triggered;
-	UPROPERTY(VisibleAnywhere, Category = 'Input') 
-		bool bAbility2Triggered;
-	UPROPERTY(EditAnywhere, Category = 'Locomotion') 
+	UPROPERTY(EditAnywhere, Category = "Bit Settings")
 		float MovementSpeed;
-	UPROPERTY(EditAnywhere, Category = 'Jump') 
+
+	// Jumping
+	UPROPERTY(VisibleAnywhere, Category = "Input") 
+		bool bJump;
+	UPROPERTY(EditAnywhere, Category = "Bit Settings") 
 		float JumpHeight;
-	UPROPERTY(EditAnywhere, Category = 'Jump') 
+	UPROPERTY(EditAnywhere, Category = "Input") 
 		bool bCanJump;
-	
-	FTimeline CurveFTimeline;
-	UPROPERTY()
-		UCurveFloat* CurveFloat;
+	UPROPERTY(EditAnywhere, Category = "Bit Settings")
+		UCurveFloat* JumpingCurve;
 	UPROPERTY() 
 		FVector JumpStartLoc;
 	UPROPERTY() 
 		FVector JumpEndLoc;
 
-	// Temperary camera variable
-	UPROPERTY(EditAnywhere, Category = 'Camera'); AActor* Camera;
+	// Abilities
+	UPROPERTY(VisibleAnywhere, Category = "Input")
+		bool bAbility1Triggered;
+	UPROPERTY(VisibleAnywhere, Category = "Input")
+		bool bAbility2Triggered;
 
+	// Camera
+	UPROPERTY(EditAnywhere, Category = "Camera") 
+		AActor* Camera;
 
+private:
+	// Movement
+	void MoveY(float AxisValue);
 
-	/* UPROPERTY(EditAnywhere) float JumpMultiplier;
-	UPROPERTY(EditAnywhere) float Acceleration;
-	UPROPERTY(EditAnywhere) float Decceleration;*/
-	
+	// Jumping
+	FTimeline JumpingTimeline;
+	void ToggleJumpOn();
+	void ToggleJumpOff();
+	UFUNCTION()
+		void JumpUpdate(float Value);
+	UFUNCTION() 
+		void JumpFinished();
+
+	// Abilities
+	void ToggleAbility1On();
+	void ToggleAbility1Off();
+	void ToggleAbility2On();
+	void ToggleAbility2Off();
 };
