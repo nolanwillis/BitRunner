@@ -2,13 +2,10 @@
 
 #pragma once
 
-
 #include "CoreMinimal.h"
 #include "GameFramework/Pawn.h"
 #include "Components/TimelineComponent.h"
 #include "Bit.generated.h"
-
-class UCurveFloat;
 
 UCLASS()
 class BITRUNNER_API ABit : public APawn
@@ -26,6 +23,14 @@ protected:
 	// Static mesh component
 	UPROPERTY(EditAnywhere)
 		UStaticMeshComponent* StaticMesh;
+
+	// Spring arm component
+	UPROPERTY(EditAnywhere)
+		class USpringArmComponent* SpringArm;
+
+	// Camera component
+	UPROPERTY()
+		class UCameraComponent* Camera;
 	 
 
 public:	
@@ -35,52 +40,59 @@ public:
 	// Called to bind functionality to input
 	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
 	
+	
+
+private:
 	// Movement
-	UPROPERTY(VisibleAnywhere, Category = "Input") 
+	UPROPERTY(VisibleAnywhere, Category = "Input")
 		FVector2D MovementInput;
 	UPROPERTY(EditAnywhere, Category = "Bit Settings")
-		float MovementSpeed;
+		float MovementSpeedY;
+	UPROPERTY(EditAnywhere, Category = "Bit Settings")
+		float MovementSpeedX;
+	UPROPERTY(EditAnywhere, Category = "Bit Settings")
+		bool bXMovementEnabled;
+	void MoveY(float AxisValue);
 
 	// Jumping
-	UPROPERTY(VisibleAnywhere, Category = "Input") 
+	UPROPERTY(VisibleAnywhere, Category = "Input")
 		bool bJump;
-	UPROPERTY(EditAnywhere, Category = "Bit Settings") 
+	UPROPERTY(EditAnywhere, Category = "Bit Settings")
 		float JumpHeight;
-	UPROPERTY(EditAnywhere, Category = "Input") 
+	UPROPERTY(EditAnywhere, Category = "Input")
 		bool bCanJump;
 	UPROPERTY(EditAnywhere, Category = "Bit Settings")
-		UCurveFloat* JumpingCurve;
-	UPROPERTY() 
+		UCurveFloat* JumpHeightCurve;
+	UPROPERTY(EditAnywhere, Category = "Bit Settings")
+		UCurveFloat* JumpTwistCurve;
+	UPROPERTY(VisibleAnywhere, Category = "Bit Settings")
 		FVector JumpStartLoc;
-	UPROPERTY() 
+	UPROPERTY(VisibleAnywhere, Category = "Bit Settings")
 		FVector JumpEndLoc;
+	UPROPERTY(VisibleAnywhere, Category = "Bit Settings")
+		FRotator JumpStartRot;
+	UPROPERTY(VisibleAnywhere, Category = "Bit Settings")
+		FRotator JumpEndRot;
+	UPROPERTY()
+	FTimeline JumpTimeline;
+	void ToggleJumpOn();
+	void ToggleJumpOff();
+	UFUNCTION()
+		void JumpHeightUpdate(float Value);
+	UFUNCTION() 
+		void JumpHeightFinished();
+	UFUNCTION()
+		void JumpTwistUpdate(float Value);
 
 	// Abilities
 	UPROPERTY(VisibleAnywhere, Category = "Input")
 		bool bAbility1Triggered;
 	UPROPERTY(VisibleAnywhere, Category = "Input")
 		bool bAbility2Triggered;
-
-	// Camera
-	UPROPERTY(EditAnywhere, Category = "Camera") 
-		AActor* Camera;
-
-private:
-	// Movement
-	void MoveY(float AxisValue);
-
-	// Jumping
-	FTimeline JumpingTimeline;
-	void ToggleJumpOn();
-	void ToggleJumpOff();
-	UFUNCTION()
-		void JumpUpdate(float Value);
-	UFUNCTION() 
-		void JumpFinished();
-
-	// Abilities
 	void ToggleAbility1On();
 	void ToggleAbility1Off();
 	void ToggleAbility2On();
 	void ToggleAbility2Off();
+
+	
 };

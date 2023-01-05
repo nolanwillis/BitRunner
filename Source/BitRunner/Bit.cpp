@@ -2,6 +2,8 @@
 
 #include "Bit.h"
 #include "Kismet/GameplayStatics.h"
+#include "GameFramework/SpringArmComponent.h"
+#include "Camera/CameraComponent.h"
 
 // Sets default values
 ABit::ABit()
@@ -12,9 +14,19 @@ ABit::ABit()
 	// Create components
 	RootComponent = CreateDefaultSubobject<USceneComponent>(TEXT("RootSceneComponent"));
 	StaticMesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("StaticMeshComponent"));
+	SpringArm = CreateDefaultSubobject<USpringArmComponent>(TEXT("SpringArmComponent"));
+	Camera = CreateDefaultSubobject<UCameraComponent>(TEXT("CameraComponent"));
 
 	// Attach components
 	StaticMesh->SetupAttachment(RootComponent);
+	SpringArm->SetupAttachment(RootComponent);
+	Camera->SetupAttachment(SpringArm);
+
+	// Set values for spring arm
+	SpringArm->SetRelativeLocationAndRotation(FVector(0.0f, 0.0f, 50.0f), FRotator(-45.0f, 0.0f, 0.0f));
+	SpringArm->TargetArmLength = 100.0f;
+	SpringArm->bEnableCameraLag = true;
+	SpringArm->CameraLagSpeed = 0.25f;
 	
 	// Set default player controller to posses pawn
 	AutoPossessPlayer = EAutoReceiveInput::Player0;
@@ -25,26 +37,34 @@ void ABit::BeginPlay()
 {
 	Super::BeginPlay();
 	
-	// Set current camera
-	APlayerController* PlayerController = UGameplayStatics::GetPlayerController(this, 0);
-	if (PlayerController)
+	// Setup jump curves
+	if (JumpHeightCurve)
 	{
-		PlayerController->SetViewTarget(Camera);
-	}
-	if (JumpingCurve)
-	{
-		// Bind jump timeline functions
-		FOnTimelineFloat ProgressUpdate;
-		ProgressUpdate.BindUFunction(this, FName("JumpUpdate"));
-		FOnTimelineEvent FinishedEvent;
-		FinishedEvent.BindUFunction(this, FName("JumpFinished"));
+		// Bind jump functions to respective delegates
+		FOnTimelineFloat JumpHeightProgressUpdate;
+		JumpHeightProgressUpdate.BindUFunction(this, FName("JumpHeightUpdate"));
+		FOnTimelineEvent JumpHeightFinishedEvent;
+		JumpHeightFinishedEvent.BindUFunction(this, FName("JumpHeightFinished"));
 
-		// Add interp float and finish function to jumping timeline
-		JumpingTimeline.AddInterpFloat(JumpingCurve, ProgressUpdate);
-		JumpingTimeline.SetTimelineFinishedFunc(FinishedEvent);
+		// Add interp float and finish functions to bit timeline
+		JumpTimeline.AddInterpFloat(JumpHeightCurve, JumpHeightProgressUpdate);
+		JumpTimeline.SetTimelineFinishedFunc(JumpHeightFinishedEvent);
 
+		// Set start and end jump targets
 		JumpStartLoc = JumpEndLoc = GetActorLocation();
 		JumpEndLoc.Z += JumpHeight;
+	}
+	if (JumpTwistCurve) {
+		// Bind twist functions to respective delegates
+		FOnTimelineFloat JumpTwistProgressUpdate;
+		JumpTwistProgressUpdate.BindUFunction(this, FName("JumpTwistUpdate"));
+
+		// Add interp float to bit timeline
+		JumpTimeline.AddInterpFloat(JumpTwistCurve, JumpTwistProgressUpdate);
+		
+		// Set start rotation of the bit 
+		JumpStartRot = JumpEndRot = StaticMesh->GetRelativeRotation();
+		JumpEndRot.Yaw = 359.9999;
 	}
 }
 
@@ -57,17 +77,29 @@ void ABit::Tick(float DeltaTime)
 	{
 		if (!MovementInput.IsZero())
 		{
-			MovementInput = MovementInput.GetSafeNormal() * MovementSpeed;
+			MovementInput = MovementInput.GetSafeNormal() * MovementSpeedY;
 			FVector NewLocation = GetActorLocation();
 			NewLocation += GetActorRightVector() * MovementInput.Y * DeltaTime;
 			SetActorLocation(NewLocation);
-			// Update y component of the jump start/end location 
+			// Update y component of the jump start/end location vectors 
 			JumpStartLoc.Y = GetActorLocation().Y;
 			JumpEndLoc.Y = GetActorLocation().Y;
 		}
 	}
+	// Handles x direction movement (this movement is automatic, no input)
+	{
+		if (bXMovementEnabled)
+		{
+			FVector NewLocation = GetActorLocation();
+			NewLocation += GetActorForwardVector() * MovementSpeedX * DeltaTime;
+			SetActorLocation(NewLocation);
+			// Update x component of the jump start/end location vectors
+			JumpStartLoc.X = GetActorLocation().X;
+			JumpEndLoc.X = GetActorLocation().X;
+		}
+	}
 	// If timeline is played tick it using delta time
-	JumpingTimeline.TickTimeline(DeltaTime);
+	JumpTimeline.TickTimeline(DeltaTime);
 }
 
 // Called to bind functionality to input
@@ -101,23 +133,30 @@ void ABit::ToggleJumpOn()
 		// Set jump variables
 		bJump = true;
 		bCanJump = false;
-		JumpingTimeline.PlayFromStart();
+		JumpTimeline.PlayFromStart();
 	}
 }
 void ABit::ToggleJumpOff()
 {
 	bJump = false;
 }
-void ABit::JumpUpdate(float Value) 
+void ABit::JumpHeightUpdate(float Value) 
 {
 	FVector NewLocation = FMath::Lerp(JumpStartLoc, JumpEndLoc, Value);
 	SetActorLocation(NewLocation);
 }
-void ABit::JumpFinished()
+void ABit::JumpHeightFinished()
 {
 	bCanJump = true;
 }
+void ABit::JumpTwistUpdate(float Value)
+{
+	FRotator NewRotation = FRotator(FQuat::SlerpFullPath(
+		JumpStartRot.Quaternion(), JumpEndRot.Quaternion(), Value));
+	StaticMesh->SetRelativeRotation(NewRotation);
+}
 
+// Abilities
 void ABit::ToggleAbility1On()
 {
 	bAbility1Triggered = true;
