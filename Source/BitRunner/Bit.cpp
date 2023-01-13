@@ -4,6 +4,9 @@
 #include "Kismet/GameplayStatics.h"
 #include "GameFramework/SpringArmComponent.h"
 #include "Camera/CameraComponent.h"
+#include "Components/InputComponent.h"
+#include "EnhancedInputComponent.h"
+#include "EnhancedInputSubsystems.h"
 
 // Sets default values
 ABit::ABit()
@@ -23,10 +26,10 @@ ABit::ABit()
 	Camera->SetupAttachment(SpringArm);
 
 	// Set values for spring arm
-	SpringArm->SetRelativeLocationAndRotation(FVector(0.0f, 0.0f, 50.0f), FRotator(-45.0f, 0.0f, 0.0f));
-	SpringArm->TargetArmLength = 100.0f;
+	SpringArm->SetRelativeLocationAndRotation(FVector(0.0f, 0.0f, 50.0f), FRotator(-15.0f, 0.0f, 0.0f));
+	SpringArm->TargetArmLength = 150.0f;
 	SpringArm->bEnableCameraLag = true;
-	SpringArm->CameraLagSpeed = 0.25f;
+	SpringArm->CameraLagSpeed = 1.0f;
 	
 	// Set default player controller to posses pawn
 	AutoPossessPlayer = EAutoReceiveInput::Player0;
@@ -36,6 +39,17 @@ ABit::ABit()
 void ABit::BeginPlay()
 {
 	Super::BeginPlay();
+
+	if (APlayerController* PlayerController = Cast<APlayerController>(GetController()))
+	{
+		if (UEnhancedInputLocalPlayerSubsystem* InputSystem = ULocalPlayer::GetSubsystem<UEnhancedInputLocalPlayerSubsystem>(PlayerController->GetLocalPlayer()))
+		{
+			if (!InputMapping)
+			{
+				InputSystem->AddMappingContext(InputMapping, 0);
+			}
+		}
+	}
 	
 	// Setup jump curves
 	if (JumpHeightCurve)
@@ -106,39 +120,35 @@ void ABit::Tick(float DeltaTime)
 void ABit::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
 {
 	Super::SetupPlayerInputComponent(PlayerInputComponent);
-	
-	// Bind action mappings
-	InputComponent->BindAction("Jump", IE_Pressed, this, &ABit::ToggleJumpOn);
-	InputComponent->BindAction("Jump", IE_Released, this, &ABit::ToggleJumpOff);
-	InputComponent->BindAction("Ability1", IE_Pressed, this, &ABit::ToggleAbility1On);
-	InputComponent->BindAction("Ability1", IE_Released, this, &ABit::ToggleAbility1Off);
-	InputComponent->BindAction("Ability2", IE_Pressed, this, &ABit::ToggleAbility2On);
-	InputComponent->BindAction("Ability2", IE_Released, this, &ABit::ToggleAbility2Off);
 
-	// Bind axis mappings
-	InputComponent->BindAxis("MoveLateral", this, &ABit::MoveY);
+	UEnhancedInputComponent* EnhancedInputComponent = Cast<UEnhancedInputComponent>(PlayerInputComponent);
+	
+	if (EnhancedInputComponent)
+	{
+		// Bind input actions
+		EnhancedInputComponent->BindAction(JumpAction, ETriggerEvent::Triggered, this, &ABit::Jump);
+		EnhancedInputComponent->BindAction(Ability1Action, ETriggerEvent::Triggered, this, &ABit::TriggerAbility1);
+		EnhancedInputComponent->BindAction(Ability2Action, ETriggerEvent::Triggered, this, &ABit::TriggerAbility2);
+		EnhancedInputComponent->BindAction(MoveAction, ETriggerEvent::Triggered, this, &ABit::Move);
+	}
 }
 
 // Movement
-void ABit::MoveY(float AxisValue)
+void ABit::Move(const FInputActionValue& Value)
 {
-	MovementInput.Y = FMath::Clamp<float>(AxisValue, -1.0f, 1.0f);
+	MovementInput.Y = FMath::Clamp<float>(Value.Get<float>(), -1.0f, 1.0f);
 }
 
 // Jumping
-void ABit::ToggleJumpOn()
+void ABit::Jump(const FInputActionValue& Value)
 {
-	if (bCanJump)
+	if (Value.Get<bool>() && bCanJump)
 	{
 		// Set jump variables
 		bJump = true;
 		bCanJump = false;
 		JumpTimeline.PlayFromStart();
 	}
-}
-void ABit::ToggleJumpOff()
-{
-	bJump = false;
 }
 void ABit::JumpHeightUpdate(float Value) 
 {
@@ -157,21 +167,14 @@ void ABit::JumpTwistUpdate(float Value)
 }
 
 // Abilities
-void ABit::ToggleAbility1On()
+void ABit::TriggerAbility1(const FInputActionValue& Value)
 {
-	bAbility1Triggered = true;
+	bAbility1Triggered = Value.Get<bool>();
 }
-void ABit::ToggleAbility1Off()
+void ABit::TriggerAbility2(const FInputActionValue& Value)
 {
-	bAbility1Triggered = false;
+	bAbility2Triggered = Value.Get<bool>();
 }
-void ABit::ToggleAbility2On()
-{
-	bAbility2Triggered = true;
-}
-void ABit::ToggleAbility2Off()
-{
-	bAbility2Triggered = false;
-}
+
 
 
