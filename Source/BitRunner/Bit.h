@@ -72,7 +72,7 @@ private:
 	UPROPERTY(EditAnywhere, Category = Movement)
 		bool bXMovementEnabled;
 	UPROPERTY(VisibleAnywhere, Category = Movement)
-		FVector2D MovementInput;
+		float MovementInput;
 	void Move(const FInputActionValue& Value);
 
 	// Jumping

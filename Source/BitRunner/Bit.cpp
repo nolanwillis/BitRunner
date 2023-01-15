@@ -5,8 +5,9 @@
 #include "GameFramework/SpringArmComponent.h"
 #include "Camera/CameraComponent.h"
 #include "Components/InputComponent.h"
-#include "EnhancedInputComponent.h"
+#include "InputMappingContext.h"
 #include "EnhancedInputSubsystems.h"
+#include "EnhancedInputComponent.h"
 
 // Sets default values
 ABit::ABit()
@@ -39,28 +40,17 @@ ABit::ABit()
 void ABit::BeginPlay()
 {
 	Super::BeginPlay();
-
-	if (APlayerController* PlayerController = Cast<APlayerController>(GetController()))
-	{
-		if (UEnhancedInputLocalPlayerSubsystem* InputSystem = ULocalPlayer::GetSubsystem<UEnhancedInputLocalPlayerSubsystem>(PlayerController->GetLocalPlayer()))
-		{
-			if (!InputMapping)
-			{
-				InputSystem->AddMappingContext(InputMapping, 0);
-			}
-		}
-	}
-	
 	// Setup jump curves
 	if (JumpHeightCurve)
-	{
+	{                           
 		// Bind jump functions to respective delegates
 		FOnTimelineFloat JumpHeightProgressUpdate;
 		JumpHeightProgressUpdate.BindUFunction(this, FName("JumpHeightUpdate"));
 		FOnTimelineEvent JumpHeightFinishedEvent;
 		JumpHeightFinishedEvent.BindUFunction(this, FName("JumpHeightFinished"));
 
-		// Add interp float and finish functions to bit timeline
+		// Add interp float curve and to jump timeline and register
+		// update/finish functions
 		JumpTimeline.AddInterpFloat(JumpHeightCurve, JumpHeightProgressUpdate);
 		JumpTimeline.SetTimelineFinishedFunc(JumpHeightFinishedEvent);
 
@@ -79,6 +69,8 @@ void ABit::BeginPlay()
 		// Set start rotation of the bit 
 		JumpStartRot = JumpEndRot = StaticMesh->GetRelativeRotation();
 		JumpEndRot.Yaw = 359.9999;
+		JumpEndRot.Roll = 359.9999;
+		JumpEndRot.Pitch = 359.9999;
 	}
 }
 
@@ -89,12 +81,13 @@ void ABit::Tick(float DeltaTime)
 
 	// Handles y direction movement
 	{
-		if (!MovementInput.IsZero())
+		if (MovementInput)
 		{
-			MovementInput = MovementInput.GetSafeNormal() * MovementSpeedY;
+			MovementInput = MovementInput * MovementSpeedY;
 			FVector NewLocation = GetActorLocation();
-			NewLocation += GetActorRightVector() * MovementInput.Y * DeltaTime;
+			NewLocation += GetActorRightVector() * MovementInput * DeltaTime;
 			SetActorLocation(NewLocation);
+			MovementInput = 0;
 			// Update y component of the jump start/end location vectors 
 			JumpStartLoc.Y = GetActorLocation().Y;
 			JumpEndLoc.Y = GetActorLocation().Y;
@@ -112,31 +105,30 @@ void ABit::Tick(float DeltaTime)
 			JumpEndLoc.X = GetActorLocation().X;
 		}
 	}
-	// If timeline is played tick it using delta time
+	// If timelines are played tick it using delta time
 	JumpTimeline.TickTimeline(DeltaTime);
 }
 
 // Called to bind functionality to input
 void ABit::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
 {
-	Super::SetupPlayerInputComponent(PlayerInputComponent);
-
+	APlayerController* PC = Cast<APlayerController>(GetController());
+	UEnhancedInputLocalPlayerSubsystem* Subsystem = ULocalPlayer::GetSubsystem<UEnhancedInputLocalPlayerSubsystem>(PC->GetLocalPlayer());
+	Subsystem->ClearAllMappings();
+	Subsystem->AddMappingContext(InputMapping, 0);
 	UEnhancedInputComponent* EnhancedInputComponent = Cast<UEnhancedInputComponent>(PlayerInputComponent);
 	
-	if (EnhancedInputComponent)
-	{
-		// Bind input actions
-		EnhancedInputComponent->BindAction(JumpAction, ETriggerEvent::Triggered, this, &ABit::Jump);
-		EnhancedInputComponent->BindAction(Ability1Action, ETriggerEvent::Triggered, this, &ABit::TriggerAbility1);
-		EnhancedInputComponent->BindAction(Ability2Action, ETriggerEvent::Triggered, this, &ABit::TriggerAbility2);
-		EnhancedInputComponent->BindAction(MoveAction, ETriggerEvent::Triggered, this, &ABit::Move);
-	}
+	// Bind input actions
+	EnhancedInputComponent->BindAction(JumpAction, ETriggerEvent::Triggered, this, &ABit::Jump);
+	EnhancedInputComponent->BindAction(Ability1Action, ETriggerEvent::Triggered, this, &ABit::TriggerAbility1);
+	EnhancedInputComponent->BindAction(Ability2Action, ETriggerEvent::Triggered, this, &ABit::TriggerAbility2);
+	EnhancedInputComponent->BindAction(MoveAction, ETriggerEvent::Triggered, this, &ABit::Move);
 }
 
 // Movement
 void ABit::Move(const FInputActionValue& Value)
-{
-	MovementInput.Y = FMath::Clamp<float>(Value.Get<float>(), -1.0f, 1.0f);
+{ 
+	MovementInput = Value.Get<float>();
 }
 
 // Jumping
@@ -148,6 +140,8 @@ void ABit::Jump(const FInputActionValue& Value)
 		bJump = true;
 		bCanJump = false;
 		JumpTimeline.PlayFromStart();
+		MovementSpeedX += 100;
+		MovementSpeedY += 100;
 	}
 }
 void ABit::JumpHeightUpdate(float Value) 
@@ -158,6 +152,8 @@ void ABit::JumpHeightUpdate(float Value)
 void ABit::JumpHeightFinished()
 {
 	bCanJump = true;
+	MovementSpeedX -= 100;
+	MovementSpeedY -= 100;
 }
 void ABit::JumpTwistUpdate(float Value)
 {
