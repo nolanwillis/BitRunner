@@ -65,6 +65,16 @@ public:
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = Health)
 		float CurrentHealth = 100.0f;
 
+	// Abilities
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = Abilities)
+		float Ability1_Charge = 0.0f;
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = Abilities)
+		float Ability2_Charge = 0.0f;
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = Abilities)
+		float Ability1_ChargeRate = 10.0f;
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = Abilities)
+		float Ability2_ChargeRate = 10.0f;
+
 private:
 	// Movement
 	UPROPERTY(EditAnywhere, Category = Movement)
@@ -81,7 +91,7 @@ private:
 	UPROPERTY(EditAnywhere, Category = Jump)
 		float JumpHeight;
 	UPROPERTY(EditAnywhere, Category = Jump)
-		bool bCanJump;
+		bool bCanJump = true;
 	UPROPERTY(EditAnywhere, Category = Jump)
 		UCurveFloat* JumpHeightCurve;
 	UPROPERTY(EditAnywhere, Category = Jump)
@@ -106,12 +116,21 @@ private:
 
 	// Abilities
 	UPROPERTY(VisibleAnywhere, Category = Abilities)
-		bool bAbility1Triggered;
+		bool bAbility1_Triggered;
 	UPROPERTY(VisibleAnywhere, Category = Abilities)
-		bool bAbility2Triggered;
+		bool bAbility2_Triggered;
+	UPROPERTY(VisibleAnywhere, Category = Abilities)
+		bool bAbility1_CanTrigger = true;
+	UPROPERTY(VisibleAnywhere, Category = Abilities)
+		bool bAbility2_CanTrigger = true;
+	UPROPERTY()
+		TArray<FHitResult> Ability1_Hits;
+	UPROPERTY(EditAnywhere, Category = Abilities)
+		double Ability1_Range = 100;
+	void TickAbility1Timer();
+	void TickAbility2Timer();
+	FTimerHandle Ability1_TimerHandle;
+	FTimerHandle Ability2_TimerHandle;
 	void TriggerAbility1(const FInputActionValue& Value);
 	void TriggerAbility2(const FInputActionValue& Value);
-
-	
-	
 };

@@ -117,7 +117,7 @@ void ABit::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
 	Subsystem->ClearAllMappings();
 	Subsystem->AddMappingContext(InputMapping, 0);
 	UEnhancedInputComponent* EnhancedInputComponent = Cast<UEnhancedInputComponent>(PlayerInputComponent);
-	
+
 	// Bind input actions
 	EnhancedInputComponent->BindAction(JumpAction, ETriggerEvent::Triggered, this, &ABit::Jump);
 	EnhancedInputComponent->BindAction(Ability1Action, ETriggerEvent::Triggered, this, &ABit::TriggerAbility1);
@@ -127,7 +127,7 @@ void ABit::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
 
 // Movement
 void ABit::Move(const FInputActionValue& Value)
-{ 
+{
 	MovementInput = Value.Get<float>();
 }
 
@@ -144,7 +144,7 @@ void ABit::Jump(const FInputActionValue& Value)
 		MovementSpeedY += 100;
 	}
 }
-void ABit::JumpHeightUpdate(float Value) 
+void ABit::JumpHeightUpdate(float Value)
 {
 	FVector NewLocation = FMath::Lerp(JumpStartLoc, JumpEndLoc, Value);
 	SetActorLocation(NewLocation);
@@ -165,12 +165,54 @@ void ABit::JumpTwistUpdate(float Value)
 // Abilities
 void ABit::TriggerAbility1(const FInputActionValue& Value)
 {
-	bAbility1Triggered = Value.Get<bool>();
+	if (Value.Get<bool>() && bAbility1_CanTrigger)
+	{
+		bAbility1_Triggered = true;
+		bAbility1_CanTrigger = false;
+		Ability1_Charge = 100.0f;
+		FVector Start = GetActorLocation() + FVector(0, 0, 30);
+		FVector End = Start + FVector(Ability1_Range*-1, 0, 0);
+		GetWorld()->LineTraceMultiByChannel(Ability1_Hits, Start, End, ECollisionChannel::ECC_GameTraceChannel1);
+		UE_LOG(LogTemp, Warning, TEXT("%d items were hit"), Ability1_Hits.Num());
+		for (FHitResult Item : Ability1_Hits)
+		{
+			Item.GetActor()->Destroy();
+		}
+		GetWorldTimerManager().SetTimer(Ability1_TimerHandle, this, &ABit::TickAbility1Timer, 1.0f, true);
+		DrawDebugLine(GetWorld(), Start, End, FColor(255, 0, 0), true, -1, 0, 25);
+	}
 }
 void ABit::TriggerAbility2(const FInputActionValue& Value)
 {
-	bAbility2Triggered = Value.Get<bool>();
+	if (Value.Get<bool>() && bAbility2_CanTrigger)
+	{
+		bAbility2_Triggered = true;
+		bAbility2_CanTrigger = false;
+		Ability2_Charge = 100.0f;
+		GetWorldTimerManager().SetTimer(Ability2_TimerHandle, this, &ABit::TickAbility2Timer, 1.0f, true);
+	}
 }
+
+void ABit::TickAbility1Timer()
+{
+	Ability1_Charge -= Ability1_ChargeRate;
+	if (Ability1_Charge <= 0)
+	{
+		GetWorldTimerManager().ClearTimer(Ability1_TimerHandle);
+		bAbility1_CanTrigger = true;
+	}
+}
+
+void ABit::TickAbility2Timer()
+{
+	Ability2_Charge -= Ability2_ChargeRate;
+	if (Ability2_Charge <= 0)
+	{
+		GetWorldTimerManager().ClearTimer(Ability2_TimerHandle);
+		bAbility2_CanTrigger = true;
+	}
+}
+
 
 
 
