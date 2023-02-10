@@ -8,8 +8,12 @@
 #include "Components/TimelineComponent.h"
 #include "Bit.generated.h"
 
+// Forward declarations
 class UInputMappingContext;
 class UInputAction;
+class USpringArmComponent;
+class UCameraComponent;
+class AProjectile;
 
 UCLASS()
 class BITRUNNER_API ABit : public APawn
@@ -19,70 +23,53 @@ class BITRUNNER_API ABit : public APawn
 public:
 	// Sets default values for this pawn's properties
 	ABit();
+	// Called every frame
+	virtual void Tick(float DeltaTime) override;
+	// Called to bind functionality to input
+	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
 
 protected:
 	// Called when the game starts or when spawned
 	virtual void BeginPlay() override;
 
-	// Static mesh component
-	UPROPERTY(EditAnywhere)
-		UStaticMeshComponent* StaticMesh;
-
-	// Spring arm component
-	UPROPERTY(EditAnywhere, Category = Camera)
-		class USpringArmComponent* SpringArm;
-
-	// Camera component
-	UPROPERTY()
-		class UCameraComponent* Camera;
-
+private:
 	// Input
-	UPROPERTY (EditAnywhere, Category = Input)
+	UPROPERTY(EditAnywhere, Category = Input)
 		UInputMappingContext* InputMapping;
-	UPROPERTY (EditAnywhere, Category = Input)
+	UPROPERTY(EditAnywhere, Category = Input)
 		UInputAction* MoveAction;
 	UPROPERTY(EditAnywhere, Category = Input)
 		UInputAction* JumpAction;
 	UPROPERTY(EditAnywhere, Category = Input)
-		UInputAction* Ability1Action;
+		UInputAction* FireAbilityAction;
 	UPROPERTY(EditAnywhere, Category = Input)
-		UInputAction* Ability2Action;
-	 
-public:	
-	// Called every frame
-	virtual void Tick(float DeltaTime) override;
+		UInputAction* Ability1_Action;
+	UPROPERTY(EditAnywhere, Category = Input)
+		UInputAction* Ability2_Action;
 
-	// Called to bind functionality to input
-	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
-	
-	// Movement
-	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = Movement)
-		float MovementSpeedX;
+	// Components
+	UPROPERTY(EditAnywhere, Category = Components, meta = (AllowPrivateAccess = true))
+		UStaticMeshComponent* StaticMesh;
+	UPROPERTY(EditAnywhere, Category = Components, meta = (AllowPrivateAccess = true))
+		USpringArmComponent* SpringArm;
+	UPROPERTY(EditAnywhere, Category = Components, meta = (AllowPrivateAccess = true))
+		UCameraComponent* Camera;
 
-	// Health 
-	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = Health)
-		float MaxHealth = 100.0f;
-	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = Health)
-		float CurrentHealth = 100.0f;
-
-	// Abilities
-	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = Abilities)
-		float Ability1_Charge = 0.0f;
-	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = Abilities)
-		float Ability2_Charge = 0.0f;
-	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = Abilities)
-		float Ability1_ChargeRate = 10.0f;
-	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = Abilities)
-		float Ability2_ChargeRate = 10.0f;
-
-private:
 	// Movement
 	UPROPERTY(EditAnywhere, Category = Movement)
-		float MovementSpeedY;
+		float MinY;
 	UPROPERTY(EditAnywhere, Category = Movement)
-		bool bXMovementEnabled;
+		float MaxY;
 	UPROPERTY(VisibleAnywhere, Category = Movement)
 		float MovementInput;
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = Movement, meta = (AllowPrivateAccess = "true"))
+		float MovementSpeedX;
+	UPROPERTY(EditAnywhere, Category = Movement, meta = (AllowPrivateAccess = "true"))
+		float MovementSpeedY;
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = Movement, meta = (AllowPrivateAccess = "true"))
+		bool bXMovementEnabled;
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = Movement, meta = (AllowPrivateAccess = "true"))
+		bool bYMovementEnabled;
 	void Move(const FInputActionValue& Value);
 
 	// Jumping
@@ -107,6 +94,7 @@ private:
 	UPROPERTY()
 	FTimeline JumpTimeline;
 	void Jump(const FInputActionValue& Value);
+
 	UFUNCTION()
 		void JumpHeightUpdate(float Value);
 	UFUNCTION() 
@@ -114,23 +102,55 @@ private:
 	UFUNCTION()
 		void JumpTwistUpdate(float Value);
 
+	// Health
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = Health, meta = (AllowPrivateAccess = "true"))
+		float MaxHealth = 100.0f;
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = Health, meta = (AllowPrivateAccess = "true"))
+		float CurrentHealth = 100.0f;
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = Health, meta = (AllowPrivateAccess = "true"))
+		bool bImmune = false;
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = Health, meta = (AllowPrivateAccess = "true"))
+		bool bIsDead = false;
+
 	// Abilities
+	UPROPERTY(VisibleAnywhere, Category = Abilities)
+		bool bFireAbility_Triggered;
 	UPROPERTY(VisibleAnywhere, Category = Abilities)
 		bool bAbility1_Triggered;
 	UPROPERTY(VisibleAnywhere, Category = Abilities)
 		bool bAbility2_Triggered;
 	UPROPERTY(VisibleAnywhere, Category = Abilities)
+		bool bFireAbility_CanTrigger = true;
+	UPROPERTY(VisibleAnywhere, Category = Abilities)
 		bool bAbility1_CanTrigger = true;
 	UPROPERTY(VisibleAnywhere, Category = Abilities)
 		bool bAbility2_CanTrigger = true;
+	UPROPERTY(EditAnywhere, Category = Abilities, meta = (AllowPrivateAccess = "true"))
+		TSubclassOf<AActor> FireProjectile;
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = Abilities, meta = (AllowPrivateAccess = "true"))
+		float Ability1_Charge = 0.0f;
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = Abilities, meta = (AllowPrivateAccess = "true"))
+		float Ability2_Charge = 0.0f;
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = Abilities, meta = (AllowPrivateAccess = "true"))
+		float Ability1_ChargeRate = 10.0f;
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = Abilities, meta = (AllowPrivateAccess = "true"))
+		float Ability2_ChargeRate = 10.0f;
 	UPROPERTY()
 		TArray<FHitResult> Ability1_Hits;
 	UPROPERTY(EditAnywhere, Category = Abilities)
 		double Ability1_Range = 100;
-	void TickAbility1Timer();
-	void TickAbility2Timer();
-	FTimerHandle Ability1_TimerHandle;
-	FTimerHandle Ability2_TimerHandle;
+	UPROPERTY(EditAnywhere, Category = Abilities)
+		float Ability2_Duration = 8.0f;
+	UPROPERTY()
+		float Ability2_TimeRemaining = Ability2_Duration;
+	void TickAbility1Cooldown();
+	void TickAbility2Cooldown();
+	void TickAbility2Duration();
+	FTimerHandle Ability1_CooldownTimer;
+	FTimerHandle Ability2_CooldownTimer;
+	FTimerHandle Ability2_DurationTimer;
+	void TriggerFireAbility(const FInputActionValue& Value);
 	void TriggerAbility1(const FInputActionValue& Value);
 	void TriggerAbility2(const FInputActionValue& Value);
+	
 };
